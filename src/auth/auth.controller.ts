@@ -5,11 +5,12 @@ import {
   Body,
   UseGuards,
   Request,
+  Headers,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CurrentUser } from '../common/decorators/user.decorator';
@@ -34,5 +35,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getProfile(@CurrentUser() user: any) {
     return this.authService.getProfile(user.userId);
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout(@Headers('authorization') authHeader: string) {
+    // Extraer el token del header "Bearer <token>"
+    const token = authHeader?.replace('Bearer ', '') || '';
+    await this.authService.logout(token);
+    return { message: 'Sesión cerrada exitosamente' };
   }
 }

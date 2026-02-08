@@ -9,6 +9,7 @@ import { Product } from '../products/entities/product.entity';
 import { Topping } from '../toppings/entities/topping.entity';
 import { KitchenQueue } from '../kitchen/entities/kitchen-queue.entity';
 import { DailySales } from '../reports/entities/daily-sales.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { DailySales } from '../reports/entities/daily-sales.entity';
       KitchenQueue,
       DailySales,
     ]),
+    AuthModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

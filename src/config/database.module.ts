@@ -11,6 +11,7 @@ import { OrderItemTopping } from '../orders/entities/order-item-topping.entity';
 import { KitchenQueue } from '../kitchen/entities/kitchen-queue.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { DailySales } from '../reports/entities/daily-sales.entity';
+import { Session } from '../auth/entities/session.entity';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { DailySales } from '../reports/entities/daily-sales.entity';
               KitchenQueue,
               Payment,
               DailySales,
+              Session,
             ],
             synchronize: process.env.NODE_ENV === 'development',
             logging: process.env.NODE_ENV === 'development',
@@ -59,6 +61,7 @@ import { DailySales } from '../reports/entities/daily-sales.entity';
               KitchenQueue,
               Payment,
               DailySales,
+              Session,
             ],
             synchronize: process.env.NODE_ENV === 'development',
             logging: process.env.NODE_ENV === 'development',

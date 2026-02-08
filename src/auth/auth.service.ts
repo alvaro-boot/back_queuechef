@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User, UserStatus } from '../users/entities/user.entity';
 import { Role } from '../roles/entities/role.entity';
+import { Session } from './entities/session.entity';
 import { jwtConstants } from '../config/jwt.config';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -20,6 +21,8 @@ export class AuthService {
     private usersRepository: Repository<User>,
     @InjectRepository(Role)
     private rolesRepository: Repository<Role>,
+    @InjectRepository(Session)
+    private sessionsRepository: Repository<Session>,
     private jwtService: JwtService,
   ) {}
 
@@ -55,8 +58,20 @@ export class AuthService {
       roleName: user.role.name,
     };
 
+    // Generar token JWT
+    const token = this.jwtService.sign(payload);
+
+    // Guardar sesión en base de datos
+    const session = this.sessionsRepository.create({
+      user_id: user.id,
+      token: token,
+      is_active: true,
+    });
+
+    await this.sessionsRepository.save(session);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: token,
       user: {
         id: user.id,
         name: user.name,
@@ -118,8 +133,20 @@ export class AuthService {
       roleName: userWithRole?.role?.name || 'Usuario',
     };
 
+    // Generar token JWT
+    const token = this.jwtService.sign(payload);
+
+    // Guardar sesión en base de datos
+    const session = this.sessionsRepository.create({
+      user_id: savedUser.id,
+      token: token,
+      is_active: true,
+    });
+
+    await this.sessionsRepository.save(session);
+
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: token,
       user: {
         id: savedUser.id,
         name: savedUser.name,
@@ -128,6 +155,27 @@ export class AuthService {
         roleName: userWithRole?.role?.name,
       },
     };
+  }
+
+  async logout(token: string): Promise<void> {
+    // Invalidar la sesión en base de datos
+    const session = await this.sessionsRepository.findOne({
+      where: { token, is_active: true },
+    });
+
+    if (session) {
+      session.is_active = false;
+      await this.sessionsRepository.save(session);
+    }
+  }
+
+  async validateSession(token: string): Promise<boolean> {
+    // Verificar que la sesión existe y está activa en BD
+    const session = await this.sessionsRepository.findOne({
+      where: { token, is_active: true },
+    });
+
+    return !!session;
   }
 
   async getProfile(userId: number) {

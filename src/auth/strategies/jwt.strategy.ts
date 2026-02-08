@@ -9,13 +9,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private usersService: UsersService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ignoreExpiration: false,
+      ignoreExpiration: false, // Aunque el token no expira por tiempo, mantenemos la validación
       secretOrKey: jwtConstants.secret,
     });
   }
 
   async validate(payload: any) {
     console.log('JwtStrategy.validate - payload recibido:', payload);
+    
     const user = await this.usersService.findOne(payload.userId);
     if (!user || user.status !== 'activo') {
       throw new UnauthorizedException();
