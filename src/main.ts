@@ -22,15 +22,17 @@ async function bootstrap() {
     credentials: true,
   });
   
-  // Middleware de logging para todas las peticiones
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    console.log('Headers:', req.headers);
-    if (req.body) {
-      console.log('Body:', JSON.stringify(req.body, null, 2));
-    }
-    next();
-  });
+      // Middleware de logging para todas las peticiones
+      app.use((req, res, next) => {
+        console.log(`\n=== REQUEST ===`);
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+        console.log(`Path: ${req.path}`);
+        console.log(`Original URL: ${req.originalUrl}`);
+        if (req.body) {
+          console.log('Body:', JSON.stringify(req.body, null, 2));
+        }
+        next();
+      });
 
   // Validación global de DTOs
   app.useGlobalPipes(

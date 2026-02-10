@@ -4,6 +4,7 @@ export class OrderResponseDto {
   id: number;
   store_id: number;
   waiter_id: number;
+  name: string | null; // Nombre del pedido
   status: string;
   total_amount: number;
   preparation_time: number | null; // Tiempo de preparación en minutos
@@ -15,6 +16,7 @@ export class OrderResponseDto {
       id: order.id,
       store_id: order.store_id,
       waiter_id: order.waiter_id,
+      name: order.name || null,
       status: order.status,
       total_amount: parseFloat(order.total_amount.toString()),
       preparation_time: order.preparation_time || null,

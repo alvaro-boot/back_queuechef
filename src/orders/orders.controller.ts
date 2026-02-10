@@ -13,6 +13,7 @@ import {
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 import { OrderStatus } from './entities/order.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -53,6 +54,23 @@ export class OrdersController {
     return this.ordersService.findOne(id, storeId);
   }
 
+  // IMPORTANTE: La ruta más específica debe ir ANTES
+  @Patch(':id/edit')
+  @UseGuards(RolesGuard)
+  @Roles('Mesero', 'Administrador')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateOrderDto: UpdateOrderDto,
+    @Store() storeId: number,
+  ) {
+    console.log('=== OrdersController.update (EDIT) ===');
+    console.log('URL: PATCH /orders/:id/edit');
+    console.log('id:', id);
+    console.log('updateOrderDto:', JSON.stringify(updateOrderDto, null, 2));
+    console.log('storeId:', storeId);
+    return this.ordersService.update(id, updateOrderDto, storeId);
+  }
+
   @Patch(':id/status')
   @UseGuards(RolesGuard)
   @Roles('Cocina', 'Administrador')
@@ -61,6 +79,11 @@ export class OrdersController {
     @Body() updateOrderStatusDto: UpdateOrderStatusDto,
     @Store() storeId: number,
   ) {
+    console.log('=== OrdersController.updateStatus ===');
+    console.log('URL: PATCH /orders/:id/status');
+    console.log('id:', id);
+    console.log('updateOrderStatusDto:', JSON.stringify(updateOrderStatusDto, null, 2));
+    console.log('storeId:', storeId);
     return this.ordersService.updateStatus(id, updateOrderStatusDto, storeId);
   }
 

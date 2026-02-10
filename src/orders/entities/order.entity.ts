@@ -37,6 +37,9 @@ export class Order {
   @JoinColumn({ name: 'waiter_id' })
   waiter: User;
 
+  @Column({ type: 'text', nullable: true })
+  name: string; // Nombre del pedido (ej: "Mesa 5", "Pedido de Juan", etc.)
+
   @Column({
     type: 'text',
     enum: OrderStatus,

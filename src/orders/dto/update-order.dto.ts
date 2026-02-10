@@ -9,30 +9,9 @@ import {
   MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CreateOrderItemDto } from './create-order.dto';
 
-export class CreateOrderItemToppingDto {
-  @IsNumber()
-  @IsNotEmpty()
-  topping_id: number;
-}
-
-export class CreateOrderItemDto {
-  @IsNumber()
-  @IsNotEmpty()
-  product_id: number;
-
-  @IsNumber()
-  @Min(1)
-  quantity: number;
-
-  @IsArray()
-  @ValidateNested({ each: true })
-  @Type(() => CreateOrderItemToppingDto)
-  @IsOptional()
-  toppings?: CreateOrderItemToppingDto[];
-}
-
-export class CreateOrderDto {
+export class UpdateOrderDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
