@@ -171,7 +171,10 @@ export class OrdersService {
         relations: ['items', 'items.product', 'items.toppings', 'items.toppings.topping'],
       });
 
-      return OrderResponseDto.fromEntity(orderWithRelations);
+      // Un pedido recién creado no está en preparación
+      const isInPreparation = false;
+
+      return OrderResponseDto.fromEntity(orderWithRelations, isInPreparation);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -210,7 +213,19 @@ export class OrdersService {
     queryBuilder.orderBy('order.created_at', 'DESC');
 
     const orders = await queryBuilder.getMany();
-    return orders.map((order) => OrderResponseDto.fromEntity(order));
+    
+    // Verificar si cada pedido está en preparación
+    const ordersWithPreparationStatus = await Promise.all(
+      orders.map(async (order) => {
+        const kitchenQueue = await this.kitchenQueueRepository.findOne({
+          where: { order_id: order.id, store_id: storeId },
+        });
+        const isInPreparation = kitchenQueue?.start_time ? true : false;
+        return OrderResponseDto.fromEntity(order, isInPreparation);
+      })
+    );
+    
+    return ordersWithPreparationStatus;
   }
 
   async findOne(id: number, storeId: number): Promise<OrderResponseDto> {
@@ -223,7 +238,13 @@ export class OrdersService {
       throw new NotFoundException(`Pedido con ID ${id} no encontrado`);
     }
 
-    return OrderResponseDto.fromEntity(order);
+    // Verificar si el pedido está en preparación
+    const kitchenQueue = await this.kitchenQueueRepository.findOne({
+      where: { order_id: id, store_id: storeId },
+    });
+    const isInPreparation = kitchenQueue?.start_time ? true : false;
+
+    return OrderResponseDto.fromEntity(order, isInPreparation);
   }
 
   async update(
@@ -373,7 +394,13 @@ export class OrdersService {
         relations: ['items', 'items.product', 'items.toppings', 'items.toppings.topping'],
       });
 
-      return OrderResponseDto.fromEntity(orderWithRelations);
+      // Verificar si el pedido está en preparación
+      const kitchenQueue = await this.kitchenQueueRepository.findOne({
+        where: { order_id: savedOrder.id, store_id: storeId },
+      });
+      const isInPreparation = kitchenQueue?.start_time ? true : false;
+
+      return OrderResponseDto.fromEntity(orderWithRelations, isInPreparation);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -403,7 +430,13 @@ export class OrdersService {
       relations: ['items', 'items.product', 'items.toppings', 'items.toppings.topping'],
     });
 
-    return OrderResponseDto.fromEntity(orderWithRelations);
+    // Verificar si el pedido está en preparación
+    const kitchenQueue = await this.kitchenQueueRepository.findOne({
+      where: { order_id: updatedOrder.id, store_id: storeId },
+    });
+    const isInPreparation = kitchenQueue?.start_time ? true : false;
+
+    return OrderResponseDto.fromEntity(orderWithRelations, isInPreparation);
   }
 
   async remove(id: number, storeId: number): Promise<{ message: string }> {

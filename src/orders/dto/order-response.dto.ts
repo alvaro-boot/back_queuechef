@@ -8,10 +8,11 @@ export class OrderResponseDto {
   status: string;
   total_amount: number;
   preparation_time: number | null; // Tiempo de preparación en minutos
+  is_in_preparation: boolean; // Indica si el pedido está en preparación (tiene start_time en kitchen_queue)
   created_at: Date;
   items: any[];
 
-  static fromEntity(order: Order): OrderResponseDto {
+  static fromEntity(order: Order, isInPreparation: boolean = false): OrderResponseDto {
     return {
       id: order.id,
       store_id: order.store_id,
@@ -20,6 +21,7 @@ export class OrderResponseDto {
       status: order.status,
       total_amount: parseFloat(order.total_amount.toString()),
       preparation_time: order.preparation_time || null,
+      is_in_preparation: isInPreparation,
       created_at: order.created_at,
       items: order.items?.map((item) => ({
         id: item.id,
