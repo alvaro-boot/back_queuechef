@@ -40,6 +40,10 @@ import { Session } from '../auth/entities/session.entity';
             ssl: {
               rejectUnauthorized: false, // Render requiere SSL pero permite certificados autofirmados
             },
+            extra: {
+              // Configurar zona horaria de Colombia en la conexión PostgreSQL
+              options: '-c timezone=America/Bogota',
+            },
           }
         : {
             // Fallback a parámetros individuales
@@ -68,6 +72,10 @@ import { Session } from '../auth/entities/session.entity';
             ssl: process.env.DB_SSL === 'true' ? {
               rejectUnauthorized: false, // Render requiere SSL pero permite certificados autofirmados
             } : false,
+            extra: {
+              // Configurar zona horaria de Colombia en la conexión PostgreSQL
+              options: '-c timezone=America/Bogota',
+            },
           }
     ),
   ],

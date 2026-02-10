@@ -47,11 +47,14 @@ export class Order {
   total_amount: number;
 
   @Column({ type: 'integer', nullable: true })
-  preparation_time: number; // Tiempo de preparación en segundos
+  preparation_time: number; // Tiempo de preparación en minutos
+
+  @Column({ type: 'boolean', default: true })
+  is_active: boolean; // true = activo, false = desactivado (eliminado lógicamente)
 
   @CreateDateColumn({
     type: 'timestamp with time zone',
-    default: () => 'now()',
+    default: () => "timezone('America/Bogota', now())",
   })
   created_at: Date;
 

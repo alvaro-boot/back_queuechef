@@ -31,7 +31,7 @@ export class Session {
 
   @CreateDateColumn({
     type: 'timestamp with time zone',
-    default: () => 'now()',
+    default: () => "timezone('America/Bogota', now())",
   })
   created_at: Date;
 

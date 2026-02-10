@@ -52,6 +52,7 @@ export class ReportsService {
       .leftJoin('orderItem.order', 'order')
       .leftJoin('orderItem.product', 'product')
       .where('order.store_id = :storeId', { storeId })
+      .andWhere('order.is_active = :isActive', { isActive: true }) // Solo pedidos activos
       .andWhere('order.created_at >= :startDate', { startDate })
       .select('product.id', 'productId')
       .addSelect('product.name', 'productName')
@@ -74,37 +75,47 @@ export class ReportsService {
   async getSummary(storeId: number) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const todaySales = await this.dailySalesRepository.findOne({
-      where: {
-        store_id: storeId,
-        sale_date: today,
-      },
-    });
+    // Calcular resumen del día basándose solo en pedidos activos
+    const todayOrders = await this.ordersRepository
+      .createQueryBuilder('order')
+      .where('order.store_id = :storeId', { storeId })
+      .andWhere('order.is_active = :isActive', { isActive: true })
+      .andWhere('order.created_at >= :today', { today })
+      .andWhere('order.created_at < :tomorrow', { tomorrow })
+      .getMany();
 
+    const todayTotalSales = todayOrders.reduce(
+      (sum, order) => sum + parseFloat(order.total_amount.toString()),
+      0,
+    );
+    const todayOrderCount = todayOrders.length;
+
+    // Calcular resumen del mes basándose solo en pedidos activos
     const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    const monthlySales = await this.dailySalesRepository
-      .createQueryBuilder('dailySales')
-      .where('dailySales.store_id = :storeId', { storeId })
-      .andWhere('dailySales.sale_date >= :thisMonth', { thisMonth })
-      .select('SUM(dailySales.total_sales)', 'totalSales')
-      .addSelect('SUM(dailySales.order_count)', 'totalOrders')
-      .getRawOne();
+    const monthlyOrders = await this.ordersRepository
+      .createQueryBuilder('order')
+      .where('order.store_id = :storeId', { storeId })
+      .andWhere('order.is_active = :isActive', { isActive: true })
+      .andWhere('order.created_at >= :thisMonth', { thisMonth })
+      .getMany();
+
+    const monthlyTotalSales = monthlyOrders.reduce(
+      (sum, order) => sum + parseFloat(order.total_amount.toString()),
+      0,
+    );
+    const monthlyOrderCount = monthlyOrders.length;
 
     return {
       today: {
-        totalSales: todaySales
-          ? parseFloat(todaySales.total_sales.toString())
-          : 0,
-        orderCount: todaySales ? todaySales.order_count : 0,
+        totalSales: todayTotalSales,
+        orderCount: todayOrderCount,
       },
       thisMonth: {
-        totalSales: monthlySales?.totalSales
-          ? parseFloat(monthlySales.totalSales)
-          : 0,
-        totalOrders: monthlySales?.totalOrders
-          ? parseInt(monthlySales.totalOrders)
-          : 0,
+        totalSales: monthlyTotalSales,
+        totalOrders: monthlyOrderCount,
       },
     };
   }

@@ -66,7 +66,7 @@ export class OrdersController {
 
   @Delete(':id')
   @UseGuards(RolesGuard)
-  @Roles('Administrador')
+  @Roles('Mesero', 'Administrador') // Meseros y administradores pueden desactivar pedidos
   remove(@Param('id', ParseIntPipe) id: number, @Store() storeId: number) {
     return this.ordersService.remove(id, storeId);
   }

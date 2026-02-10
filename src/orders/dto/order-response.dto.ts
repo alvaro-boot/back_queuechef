@@ -6,7 +6,7 @@ export class OrderResponseDto {
   waiter_id: number;
   status: string;
   total_amount: number;
-  preparation_time: number | null; // Tiempo de preparación en segundos
+  preparation_time: number | null; // Tiempo de preparación en minutos
   created_at: Date;
   items: any[];
 

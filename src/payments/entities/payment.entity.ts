@@ -28,7 +28,7 @@ export class Payment {
 
   @CreateDateColumn({
     type: 'timestamp with time zone',
-    default: () => 'now()',
+    default: () => "timezone('America/Bogota', now())",
   })
   payment_date: Date;
 }

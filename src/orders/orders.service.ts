@@ -122,6 +122,7 @@ export class OrdersService {
         status: OrderStatus.EN_PROCESO,
         total_amount: totalAmount,
         items: orderItems,
+        is_active: true, // Todos los pedidos nuevos son activos
       });
 
       const savedOrder = await queryRunner.manager.save(order);
@@ -189,7 +190,8 @@ export class OrdersService {
       .leftJoinAndSelect('items.product', 'product')
       .leftJoinAndSelect('items.toppings', 'toppings')
       .leftJoinAndSelect('toppings.topping', 'topping')
-      .where('order.store_id = :storeId', { storeId });
+      .where('order.store_id = :storeId', { storeId })
+      .andWhere('order.is_active = :isActive', { isActive: true }); // Solo pedidos activos
 
     if (status) {
       queryBuilder.andWhere('order.status = :status', { status });
@@ -211,7 +213,7 @@ export class OrdersService {
 
   async findOne(id: number, storeId: number): Promise<OrderResponseDto> {
     const order = await this.ordersRepository.findOne({
-      where: { id, store_id: storeId },
+      where: { id, store_id: storeId, is_active: true }, // Solo pedidos activos
       relations: ['items', 'items.product', 'items.toppings', 'items.toppings.topping'],
     });
 
@@ -228,11 +230,11 @@ export class OrdersService {
     storeId: number,
   ): Promise<OrderResponseDto> {
     const order = await this.ordersRepository.findOne({
-      where: { id, store_id: storeId },
+      where: { id, store_id: storeId, is_active: true }, // Solo pedidos activos
     });
 
     if (!order) {
-      throw new NotFoundException(`Pedido con ID ${id} no encontrado`);
+      throw new NotFoundException(`Pedido con ID ${id} no encontrado o está desactivado`);
     }
 
     order.status = updateOrderStatusDto.status;
@@ -246,7 +248,7 @@ export class OrdersService {
     return OrderResponseDto.fromEntity(orderWithRelations);
   }
 
-  async remove(id: number, storeId: number): Promise<void> {
+  async remove(id: number, storeId: number): Promise<{ message: string }> {
     const order = await this.ordersRepository.findOne({
       where: { id, store_id: storeId },
     });
@@ -255,6 +257,38 @@ export class OrdersService {
       throw new NotFoundException(`Pedido con ID ${id} no encontrado`);
     }
 
-    await this.ordersRepository.remove(order);
+    if (!order.is_active) {
+      throw new BadRequestException('El pedido ya está desactivado');
+    }
+
+    // Desactivar el pedido en lugar de eliminarlo físicamente
+    order.is_active = false;
+    await this.ordersRepository.save(order);
+
+    // Actualizar daily_sales restando el monto y decrementando el conteo
+    const orderDate = new Date(order.created_at);
+    orderDate.setHours(0, 0, 0, 0);
+
+    const dailySales = await this.dailySalesRepository.findOne({
+      where: {
+        store_id: storeId,
+        sale_date: orderDate,
+      },
+    });
+
+    if (dailySales) {
+      const orderAmount = parseFloat(order.total_amount.toString());
+      const currentTotal = parseFloat(dailySales.total_sales.toString());
+      
+      // Restar el monto del pedido desactivado
+      dailySales.total_sales = Math.max(0, currentTotal - orderAmount);
+      
+      // Decrementar el conteo de pedidos
+      dailySales.order_count = Math.max(0, dailySales.order_count - 1);
+      
+      await this.dailySalesRepository.save(dailySales);
+    }
+
+    return { message: 'Pedido desactivado exitosamente' };
   }
 }

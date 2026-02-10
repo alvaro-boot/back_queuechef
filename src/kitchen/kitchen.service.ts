@@ -20,11 +20,17 @@ export class KitchenService {
   ) {}
 
   async findAll(storeId: number): Promise<KitchenQueueResponseDto[]> {
-    const queues = await this.kitchenQueueRepository.find({
-      where: { store_id: storeId },
-      relations: ['order', 'order.items', 'order.items.product', 'order.items.toppings', 'order.items.toppings.topping'],
-      order: { id: 'ASC' },
-    });
+    const queues = await this.kitchenQueueRepository
+      .createQueryBuilder('queue')
+      .leftJoinAndSelect('queue.order', 'order')
+      .leftJoinAndSelect('order.items', 'items')
+      .leftJoinAndSelect('items.product', 'product')
+      .leftJoinAndSelect('items.toppings', 'toppings')
+      .leftJoinAndSelect('toppings.topping', 'topping')
+      .where('queue.store_id = :storeId', { storeId })
+      .andWhere('order.is_active = :isActive', { isActive: true }) // Solo pedidos activos
+      .orderBy('queue.id', 'ASC')
+      .getMany();
 
     return queues.map((queue) => KitchenQueueResponseDto.fromEntity(queue));
   }
@@ -47,6 +53,7 @@ export class KitchenService {
   async startPreparation(id: number, storeId: number): Promise<KitchenQueueResponseDto> {
     const queue = await this.kitchenQueueRepository.findOne({
       where: { id, store_id: storeId },
+      relations: ['order'],
     });
 
     if (!queue) {
@@ -55,11 +62,16 @@ export class KitchenService {
       );
     }
 
+    if (queue.order && !queue.order.is_active) {
+      throw new BadRequestException('No se puede iniciar la preparación de un pedido desactivado');
+    }
+
     if (queue.start_time) {
       throw new BadRequestException('La preparación ya ha comenzado');
     }
 
     queue.kitchen_status = 'En preparación';
+    // Usar la hora de Colombia
     queue.start_time = new Date();
 
     const savedQueue = await this.kitchenQueueRepository.save(queue);
@@ -84,6 +96,10 @@ export class KitchenService {
       );
     }
 
+    if (queue.order && !queue.order.is_active) {
+      throw new BadRequestException('No se puede completar la preparación de un pedido desactivado');
+    }
+
     if (!queue.start_time) {
       throw new BadRequestException('La preparación no ha comenzado');
     }
@@ -95,12 +111,12 @@ export class KitchenService {
     if (queue.order) {
       queue.order.status = OrderStatus.ENTREGADO;
       
-      // Calcular tiempo de preparación en segundos
+      // Calcular tiempo de preparación en minutos
       if (queue.start_time && queue.end_time) {
         const startTime = new Date(queue.start_time).getTime();
         const endTime = new Date(queue.end_time).getTime();
-        const preparationTimeSeconds = Math.round((endTime - startTime) / 1000);
-        queue.order.preparation_time = preparationTimeSeconds;
+        const preparationTimeMinutes = Math.round((endTime - startTime) / (1000 * 60)); // Convertir a minutos
+        queue.order.preparation_time = preparationTimeMinutes;
       }
       
       await this.ordersRepository.save(queue.order);

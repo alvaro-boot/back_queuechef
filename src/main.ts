@@ -4,6 +4,9 @@ import { resolve } from 'path';
 // Cargar .env antes de cualquier otra importación
 config({ path: resolve(__dirname, '../.env') });
 
+// Configurar zona horaria de Colombia antes de cualquier otra cosa
+process.env.TZ = 'America/Bogota';
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
