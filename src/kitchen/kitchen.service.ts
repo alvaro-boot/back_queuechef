@@ -20,6 +20,14 @@ export class KitchenService {
   ) {}
 
   async findAll(storeId: number): Promise<KitchenQueueResponseDto[]> {
+    // Calcular el inicio y fin del día actual en Colombia (America/Bogota)
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+
+    // Filtrar solo pedidos del día actual
     const queues = await this.kitchenQueueRepository
       .createQueryBuilder('queue')
       .leftJoinAndSelect('queue.order', 'order')
@@ -29,6 +37,8 @@ export class KitchenService {
       .leftJoinAndSelect('toppings.topping', 'topping')
       .where('queue.store_id = :storeId', { storeId })
       .andWhere('order.is_active = :isActive', { isActive: true }) // Solo pedidos activos
+      .andWhere('order.created_at >= :todayStart', { todayStart }) // Desde inicio del día
+      .andWhere('order.created_at < :tomorrowStart', { tomorrowStart }) // Hasta inicio del día siguiente
       .orderBy('queue.id', 'ASC')
       .getMany();
 

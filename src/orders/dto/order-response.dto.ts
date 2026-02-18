@@ -5,6 +5,8 @@ export class OrderResponseDto {
   store_id: number;
   waiter_id: number;
   name: string | null; // Nombre del pedido
+  comments: string | null; // Comentarios o notas del mesero sobre el pedido
+  daily_order_number: number | null; // Número del pedido del día (se reinicia cada día)
   status: string;
   total_amount: number;
   preparation_time: number | null; // Tiempo de preparación en minutos
@@ -18,6 +20,8 @@ export class OrderResponseDto {
       store_id: order.store_id,
       waiter_id: order.waiter_id,
       name: order.name || null,
+      comments: order.comments || null,
+      daily_order_number: order.daily_order_number || null,
       status: order.status,
       total_amount: parseFloat(order.total_amount.toString()),
       preparation_time: order.preparation_time || null,

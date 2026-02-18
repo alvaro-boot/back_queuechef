@@ -43,7 +43,12 @@ export class OrdersController {
     @Query('status') status?: OrderStatus,
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('allDates') allDates?: string, // Parámetro para indicar que se quieren todos los pedidos sin filtro de fecha
   ) {
+    // Si allDates es 'true', no pasar fechas para que el servicio no filtre por día actual
+    if (allDates === 'true') {
+      return this.ordersService.findAll(storeId, status, undefined, undefined, true);
+    }
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
     return this.ordersService.findAll(storeId, status, start, end);

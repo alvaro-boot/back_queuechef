@@ -43,4 +43,9 @@ export class CreateOrderDto {
   @IsOptional()
   @MaxLength(100)
   name?: string; // Nombre del pedido (opcional)
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  comments?: string; // Comentarios o notas del mesero sobre el pedido (opcional)
 }

@@ -116,11 +116,55 @@ export class OrdersService {
         orderItems.push(orderItem);
       }
 
+      // Calcular el número del pedido del día (usando zona horaria de Colombia)
+      // Obtener la fecha actual en Colombia (America/Bogota)
+      const now = new Date();
+      
+      // Obtener el último número de pedido del día para esta tienda
+      // Usamos una consulta SQL directa para mayor control
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      
+      // Consulta usando raw SQL para mayor precisión con zona horaria
+      // Usamos try-catch para manejar el caso donde la columna no existe aún
+      let dailyOrderNumber = 1;
+      try {
+        const lastOrderTodayResult = await queryRunner.manager.query(
+          `SELECT daily_order_number 
+           FROM orders 
+           WHERE store_id = $1 
+           AND created_at >= $2 
+           AND created_at < $3 
+           AND daily_order_number IS NOT NULL
+           ORDER BY daily_order_number DESC 
+           LIMIT 1`,
+          [storeId, todayStart, tomorrowStart]
+        );
+
+        const lastOrderToday = lastOrderTodayResult && lastOrderTodayResult.length > 0 
+          ? lastOrderTodayResult[0] 
+          : null;
+
+        dailyOrderNumber = lastOrderToday?.daily_order_number
+          ? lastOrderToday.daily_order_number + 1
+          : 1;
+      } catch (error) {
+        // Si la columna no existe, empezamos desde 1
+        console.warn(`[OrdersService] Error al consultar daily_order_number (puede que la columna no exista aún):`, error.message);
+        dailyOrderNumber = 1;
+      }
+
+      console.log(`[OrdersService] Calculando daily_order_number para store_id=${storeId}: ${dailyOrderNumber}`);
+
       // Crear pedido
       const order = this.ordersRepository.create({
         store_id: storeId,
         waiter_id: waiterId,
         name: createOrderDto.name?.trim() || null, // Nombre del pedido (opcional)
+        comments: createOrderDto.comments?.trim() || null, // Comentarios del mesero (opcional)
+        daily_order_number: dailyOrderNumber, // Número del pedido del día
         status: OrderStatus.EN_PROCESO,
         total_amount: totalAmount,
         items: orderItems,
@@ -128,6 +172,8 @@ export class OrdersService {
       });
 
       const savedOrder = await queryRunner.manager.save(order);
+      
+      console.log(`[OrdersService] Pedido guardado con ID=${savedOrder.id}, daily_order_number=${savedOrder.daily_order_number}`);
 
       // Crear registro en cola de cocina
       const kitchenQueue = this.kitchenQueueRepository.create({
@@ -171,6 +217,12 @@ export class OrdersService {
         relations: ['items', 'items.product', 'items.toppings', 'items.toppings.topping'],
       });
 
+      if (!orderWithRelations) {
+        throw new Error('No se pudo recargar el pedido después de guardarlo');
+      }
+
+      console.log(`[OrdersService] Pedido recargado - ID=${orderWithRelations.id}, daily_order_number=${orderWithRelations.daily_order_number}`);
+
       // Un pedido recién creado no está en preparación
       const isInPreparation = false;
 
@@ -188,6 +240,7 @@ export class OrdersService {
     status?: OrderStatus,
     startDate?: Date,
     endDate?: Date,
+    allDates?: boolean, // Si es true, no filtrar por fecha (para administrador)
   ): Promise<OrderResponseDto[]> {
     const queryBuilder = this.ordersRepository
       .createQueryBuilder('order')
@@ -202,19 +255,37 @@ export class OrdersService {
       queryBuilder.andWhere('order.status = :status', { status });
     }
 
-    if (startDate) {
-      queryBuilder.andWhere('order.created_at >= :startDate', { startDate });
+    // Si allDates es true, no filtrar por fecha (para administrador)
+    if (allDates) {
+      // No agregar filtros de fecha
+    } else if (!startDate && !endDate) {
+      // Si no se proporcionan fechas y no es allDates, filtrar por el día actual
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      const tomorrowStart = new Date(todayStart);
+      tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+      
+      queryBuilder.andWhere('order.created_at >= :todayStart', { todayStart });
+      queryBuilder.andWhere('order.created_at < :tomorrowStart', { tomorrowStart });
+    } else {
+      // Si se proporcionan fechas explícitas, usarlas
+      if (startDate) {
+        queryBuilder.andWhere('order.created_at >= :startDate', { startDate });
+      }
+
+      if (endDate) {
+        queryBuilder.andWhere('order.created_at <= :endDate', { endDate });
+      }
     }
 
-    if (endDate) {
-      queryBuilder.andWhere('order.created_at <= :endDate', { endDate });
-    }
-
+    // Ordenar por fecha de creación descendente (más recientes primero)
     queryBuilder.orderBy('order.created_at', 'DESC');
 
     const orders = await queryBuilder.getMany();
     
     // Verificar si cada pedido está en preparación
+    // Promise.all mantiene el orden de los resultados, así que el ordenamiento se preserva
     const ordersWithPreparationStatus = await Promise.all(
       orders.map(async (order) => {
         const kitchenQueue = await this.kitchenQueueRepository.findOne({
@@ -358,6 +429,9 @@ export class OrdersService {
       order.total_amount = totalAmount;
       if (updateOrderDto.name !== undefined) {
         order.name = updateOrderDto.name?.trim() || null;
+      }
+      if (updateOrderDto.comments !== undefined) {
+        order.comments = updateOrderDto.comments?.trim() || null;
       }
 
       const savedOrder = await queryRunner.manager.save(order);

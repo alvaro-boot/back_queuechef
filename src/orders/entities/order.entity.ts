@@ -40,6 +40,12 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   name: string; // Nombre del pedido (ej: "Mesa 5", "Pedido de Juan", etc.)
 
+  @Column({ type: 'text', nullable: true })
+  comments: string; // Comentarios o notas del mesero sobre el pedido
+
+  @Column({ type: 'integer', nullable: true })
+  daily_order_number: number; // Número del pedido del día (se reinicia cada día, empieza en 1)
+
   @Column({
     type: 'text',
     enum: OrderStatus,

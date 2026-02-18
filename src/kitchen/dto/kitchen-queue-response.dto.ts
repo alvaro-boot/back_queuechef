@@ -20,7 +20,9 @@ export class KitchenQueueResponseDto {
       order: queue.order
         ? {
             id: queue.order.id,
+            daily_order_number: queue.order.daily_order_number || null,
             name: queue.order.name || null,
+            comments: queue.order.comments || null,
             status: queue.order.status,
             total_amount: parseFloat(queue.order.total_amount.toString()),
             created_at: queue.order.created_at,
